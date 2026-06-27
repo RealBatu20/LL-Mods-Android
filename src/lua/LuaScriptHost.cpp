@@ -145,10 +145,7 @@ sol::object LuaScriptHost::dispatch(EventPhase phase, const std::string& eventNa
     // dispatch does not invalidate our iteration.
     std::vector<sol::protected_function> listeners = it->second;
     for (auto& fn : listeners) {
-        sol::protected_function call = fn;
-        sol::protected_function handler = state_.sol()["__blua_traceback"];
-        if (handler.valid()) call.error_handler = handler;
-        auto r = call(payload);
+        auto r = fn(payload);  // protected call; never throws into C++
         if (!r.valid()) {
             sol::error err = r;
             log::error("[{}] event '{}' listener error: {}", packId_, eventName, err.what());
