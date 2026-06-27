@@ -28,21 +28,38 @@ LeviLamina-style naming. They have not been verified against every build. A
 candidate that does not resolve is not a build error — the binding that needs it
 raises a catchable Lua error and everything else keeps working.
 
-## Verifying / adding a build
+## Finding the real signatures (automated)
 
-1. Pull the `libminecraftpe.so` for your target version + ABI out of the APK
+The symbols here are *candidates* until checked against a real binary. The fastest
+correct way to populate verified entries is to extract them straight from your
+target `libminecraftpe.so` with the bundled tool — no disassembler needed,
+because libminecraftpe.so for Android exports a large dynamic symbol table.
+
+1. Pull `libminecraftpe.so` (arm64-v8a) out of the Minecraft APK
    (`lib/arm64-v8a/libminecraftpe.so`).
-2. Load it in a disassembler (IDA / Ghidra / Binary Ninja) or dump symbols:
+2. Run the extractor (uses the NDK's `llvm-nm`; set `NM=` if it isn't on PATH):
    ```sh
-   $ANDROID_NDK/toolchains/llvm/prebuilt/*/bin/llvm-nm -C libminecraftpe.so | grep -i 'Level::tick'
+   # dry run - shows what it found
+   python3 scripts/extract_signatures.py /path/to/libminecraftpe.so 1.21.50
+
+   # merge verified symbols into src/sig/signatures.json
+   python3 scripts/extract_signatures.py /path/to/libminecraftpe.so 1.21.50 --write
    ```
-3. For each logical name in `signatures.json`, confirm the mangled symbol exists
-   (exported) or derive a stable byte pattern from the function prologue if it is
-   stripped/local.
-4. Update the `candidates` list, tagging each with its `version`.
-5. Re-package (`packaging/package.sh`) — `signatures.json` is shipped alongside
+   For each logical name it reports `[ADD]` (new symbol found), `[CONFIRM]` (a
+   shipped candidate is real on this build — flips `"verified": true` and pins the
+   version), or `[MISS]` (no exported symbol — that one needs a byte pattern).
+3. Re-package (`packaging/package.sh`) — `signatures.json` is shipped alongside
    the `.so` and read from the mod directory at runtime, so you can iterate
    without recompiling.
+
+For a `[MISS]`, derive a stable byte pattern from the function prologue in a
+disassembler (IDA / Ghidra / Binary Ninja) and add it as a `pattern` candidate;
+these are scanned at runtime by `src/sig/ModuleScanner.cpp`.
+
+> The repository ships **unverified candidates** only: this environment has no
+> `libminecraftpe.so`, so the maintainers cannot mark them verified — that is the
+> one step that requires your target binary. Run the extractor (or paste an
+> `llvm-nm -DC libminecraftpe.so` dump) to produce verified entries.
 
 ## Field offsets (not in signatures.json)
 
