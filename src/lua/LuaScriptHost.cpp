@@ -136,7 +136,7 @@ sol::object LuaScriptHost::dispatch(EventPhase phase, const std::string& eventNa
     auto& map = listenersFor(phase);
     auto it = map.find(eventName);
     if (it == map.end() || it->second.empty()) {
-        return sol::lua_nil;
+        return sol::object{};  // nil
     }
 
     sol::object payload = factory(*this);

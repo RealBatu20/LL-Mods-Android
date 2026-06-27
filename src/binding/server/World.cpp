@@ -77,9 +77,9 @@ void installWorld(lua::LuaScriptHost& host, sol::table& server) {
         sol::protected_function maker = host.state().sol()["__blua_make_dimension"];
         if (maker.valid()) {
             auto r = maker(id);
-            if (r.valid()) return r;
+            if (r.valid()) return r.get<sol::object>();
         }
-        return sol::lua_nil;
+        return sol::object{};  // nil
     });
 
     server["world"] = world;
