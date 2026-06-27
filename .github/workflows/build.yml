@@ -9,23 +9,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
+
     - uses: nttld/setup-ndk@v1
       id: ndk
       with:
         ndk-version: r26b
-        
-    - name: Build
+
+    - name: Fetch prebuilt Dobby (arm64-v8a)
       run: |
-        mkdir build
+        set -euo pipefail
+        mkdir -p Dobby/arm64-v8a
+        # Build Dobby from source for the Android target.
+        git clone --depth 1 https://github.com/jmpews/Dobby.git dobby-src
+        cmake -B dobby-build -S dobby-src \
+          -DCMAKE_TOOLCHAIN_FILE=${{ steps.ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+          -DANDROID_ABI=arm64-v8a \
+          -DANDROID_PLATFORM=android-24 \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DDOBBY_GENERATE_SHARED=OFF \
+          -DDOBBY_DEBUG=OFF
+        cmake --build dobby-build -j"$(nproc)"
+        find dobby-build -name 'libdobby.a' -exec cp {} Dobby/arm64-v8a/libdobby.a \;
+        test -f Dobby/arm64-v8a/libdobby.a
+
+    - name: Build libbedrocklua.so
+      run: |
+        set -euo pipefail
         cmake -B build \
           -DCMAKE_TOOLCHAIN_FILE=${{ steps.ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
           -DANDROID_ABI=arm64-v8a \
           -DANDROID_PLATFORM=android-24 \
           -DCMAKE_BUILD_TYPE=Release
-        cmake --build build -j$(nproc)
-        
+        cmake --build build -j"$(nproc)"
+        test -f build/libbedrocklua.so
+
+    - name: Package .levipack
+      run: |
+        set -euo pipefail
+        bash packaging/package.sh build/libbedrocklua.so
+
     - uses: actions/upload-artifact@v4
       with:
-        name: libAdvancedStatsMod
-        path: build/libAdvancedStatsMod.so
+        name: bedrocklua
+        path: |
+          build/libbedrocklua.so
+          dist/bedrocklua.levipack
