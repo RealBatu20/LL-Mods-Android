@@ -1,0 +1,17 @@
+{
+  "type": "preload-native",
+  "name": "bedrocklua",
+  "author": "LL-Mods-Android",
+  "version": "0.1.0",
+  "description": "A Lua scripting API for Minecraft Bedrock. Lets behavior packs declare a script module with \"language\": \"lua\" the same way the vanilla Script API uses \"javascript\".",
+  "entry": "libbedrocklua.so",
+  "minecraft_versions": [
+    "1.21.0",
+    "1.21.1",
+    "1.21.2*",
+    "1.21.3*",
+    "1.21.4*",
+    "1.21.5*",
+    "1.21.*"
+  ]
+}

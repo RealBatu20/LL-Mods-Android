@@ -1,0 +1,29 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "bedrocklua Example",
+    "description": "Demonstrates a Lua script module loaded by bedrocklua.",
+    "uuid": "6f9d2c10-1f3a-4c5e-9a7b-2b1e8f0c4d11",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "lua",
+      "uuid": "a2c8e740-77b9-4e2a-9d6f-0c3b5a91e022",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.lua"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "1.0.0"
+    },
+    {
+      "module_name": "@minecraft/server-ui",
+      "version": "1.0.0"
+    }
+  ]
+}
