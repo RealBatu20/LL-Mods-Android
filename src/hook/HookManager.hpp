@@ -1,6 +1,6 @@
 #pragma once
 
-// HookManager - thin bookkeeping layer over pl::hook (Dobby).
+// HookManager - thin bookkeeping layer over pl::hook (GlossHook backend).
 //
 // Hook modules (LevelHooks, ChatHooks, PackStackHooks, ...) install their
 // detours through here so that disable()/unload() can tear everything down in

@@ -6,7 +6,8 @@ project(bedrocklua LANGUAGES C CXX)
 #
 # Re-implementation of the concept behind the archived Imrglop/bedrock.lua
 # (which targeted Win10 Edition + MinHook) on the Android / ARM64 stack using
-# LeviLaunchroid's preloader-android + Dobby. Produces libbedrocklua.so.
+# LeviLaunchroid's preloader-android (GlossHook backend). Produces
+# libbedrocklua.so.
 # ---------------------------------------------------------------------------
 
 set(CMAKE_CXX_STANDARD 20)
@@ -31,7 +32,9 @@ FetchContent_Declare(fmt
     GIT_REPOSITORY https://github.com/fmtlib/fmt.git
     GIT_TAG 10.2.1)
 
-FetchContent_Declare(json
+# Declared with the same name preloader-android uses internally so FetchContent
+# de-duplicates instead of creating a second nlohmann_json target.
+FetchContent_Declare(nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG v3.11.3)
 
@@ -50,7 +53,7 @@ FetchContent_Declare(sol2
     GIT_REPOSITORY https://github.com/ThePhd/sol2.git
     GIT_TAG v3.3.0)
 
-FetchContent_MakeAvailable(fmt glm json lua sol2)
+FetchContent_MakeAvailable(fmt glm nlohmann_json lua sol2)
 
 # --- LeviLaunchroid preloader (provides pl::mod / pl::hook / pl::signature) -
 FetchContent_Declare(preloader_android
@@ -73,29 +76,24 @@ endif()
 
 target_link_libraries(preloader PUBLIC fmt::fmt glm::glm)
 
-# --- Dobby (inline ARM64 hooking backend) ---------------------------------
-add_library(dobby STATIC IMPORTED)
-set_target_properties(dobby PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/Dobby/${ANDROID_ABI}/libdobby.a)
+# Note: the hooking backend is GlossHook, which preloader-android links into
+# libpreloader.so itself (selected by ANDROID_ABI). We reach it purely through
+# pl::hook, so no separate hook library is needed here.
 
 # --- the mod --------------------------------------------------------------
 file(GLOB_RECURSE BEDROCKLUA_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
 add_library(bedrocklua SHARED ${BEDROCKLUA_SOURCES})
 
-# Embed the version-keyed signature table next to the sources so it can be read
-# at runtime from the mod directory; also keep a compiled copy as a fallback.
 target_compile_definitions(bedrocklua PRIVATE
     SOL_ALL_SAFETIES_ON=1
     SOL_EXCEPTIONS_SAFE_PROPAGATION=1)
 
 target_include_directories(bedrocklua PRIVATE
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/Dobby)
+    ${CMAKE_SOURCE_DIR}/src)
 
 target_link_libraries(bedrocklua
     preloader
-    dobby
     sol2::sol2
     lua_static
     fmt::fmt

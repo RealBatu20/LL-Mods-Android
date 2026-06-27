@@ -67,10 +67,9 @@ void LuaState::installHandlers() {
 }
 
 sol::protected_function_result LuaState::safeCall(const sol::protected_function& fn) {
-    sol::protected_function call = fn;
-    sol::protected_function handler = state_["__blua_traceback"];
-    if (handler.valid()) call.error_handler = handler;
-    return call();
+    // With SOL_ALL_SAFETIES_ON the call is protected: on error it returns an
+    // invalid result (never throws into C++), and the caller logs err.what().
+    return fn();
 }
 
 Result<void> LuaState::runFile(const std::filesystem::path& file) {

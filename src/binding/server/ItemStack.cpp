@@ -27,7 +27,7 @@ sol::table makeItemStack(sol::state_view lua, const std::string& typeId, int amo
         item["amount"] = n <= 0 ? 1 : n;
     });
     item.set_function("getAmount", [item]() -> int { return item["amount"]; });
-    item.set_function("clone", [lua, item]() -> sol::table {
+    item.set_function("clone", [lua, item]() mutable -> sol::table {
         sol::table copy = makeItemStack(lua, item["typeId"], item["amount"]);
         copy["nameTag"] = item["nameTag"];
         // shallow-copy lore
