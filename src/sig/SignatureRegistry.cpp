@@ -1,11 +1,11 @@
 #include "sig/SignatureRegistry.hpp"
 
-#include <pl/cpp/Signature.hpp>
-
+#include <Gloss.h>
 #include <nlohmann/json.hpp>
 
 #include <fstream>
 
+#include "sig/ModuleScanner.hpp"
 #include "util/Log.hpp"
 
 namespace bedrocklua {
@@ -29,51 +29,56 @@ SignatureRegistry::Candidate pat(std::string s, std::string ver) {
 }  // namespace
 
 void SignatureRegistry::loadEmbeddedDefaults() {
+    // Embedded fallback for the shippable src/sig/signatures.json. Targets the
+    // Minecraft Bedrock 1.21-1.26 range: these core mangled names are largely
+    // stable across those minors, and resolve() tries each candidate against the
+    // loaded binary, so whatever matches the running version is used while
+    // unresolved entries degrade gracefully.
     entries_.clear();
 
     // --- engine lifecycle (drives the Lua scheduler + world events) --------
     add(entries_, "Level::tick",
-        {sym("_ZN5Level4tickEv", "1.21.x"),
-         sym("_ZN11ServerLevel4tickEv", "1.21.x")});
+        {sym("_ZN5Level4tickEv", "1.21-1.26"),
+         sym("_ZN11ServerLevel4tickEv", "1.21-1.26")});
 
     add(entries_, "ServerLevel::onLevelLoaded",
-        {sym("_ZN5Level13onLevelLoadedEv", "1.21.x")});
+        {sym("_ZN5Level13onLevelLoadedEv", "1.21-1.26")});
 
     // --- chat (world.sendMessage + chatSend events) ------------------------
     add(entries_, "ServerNetworkHandler::handleTextPacket",
         {sym("_ZN20ServerNetworkHandler6handleERK18NetworkIdentifierRK10TextPacket",
-             "1.21.x")});
+             "1.21-1.26")});
 
     add(entries_, "TextPacket::createChat",
         {sym("_ZN10TextPacket10createChatERKNSt6__ndk112basic_stringIcNS0_11char_traits"
-             "IcEENS0_9allocatorIcEEEES8_PS6_S8_S8_", "1.21.x")});
+             "IcEENS0_9allocatorIcEEEES8_PS6_S8_S8_", "1.21-1.26")});
 
     add(entries_, "ServerPlayer::sendNetworkPacket",
-        {sym("_ZNK6Player17sendNetworkPacketER6Packet", "1.21.x")});
+        {sym("_ZNK6Player17sendNetworkPacketER6Packet", "1.21-1.26")});
 
     // --- command execution -------------------------------------------------
     add(entries_, "MinecraftCommands::executeCommand",
-        {sym("_ZNK17MinecraftCommands14executeCommandE13CommandContextb", "1.21.x")});
+        {sym("_ZNK17MinecraftCommands14executeCommandE13CommandContextb", "1.21-1.26")});
 
     // --- resource/behavior pack stack (PackStackHooks) ---------------------
     add(entries_, "ResourcePackManager::setStack",
         {sym("_ZN19ResourcePackManager8setStackENSt6__ndk110unique_ptrI16ResourcePackStackNS0_14default_deleteIS2_EEEE16ResourcePackTypeb",
-             "1.21.x")});
+             "1.21-1.26")});
 
     // --- player / actor accessors (offset-dependent bindings) --------------
     add(entries_, "Level::getActivePlayerCount",
-        {sym("_ZNK5Level20getActivePlayerCountEv", "1.21.x")});
+        {sym("_ZNK5Level20getActivePlayerCountEv", "1.21-1.26")});
     add(entries_, "Actor::getNameTag",
-        {sym("_ZNK5Actor10getNameTagB5cxx11Ev", "1.21.x")});
+        {sym("_ZNK5Actor10getNameTagB5cxx11Ev", "1.21-1.26")});
     add(entries_, "Actor::getPosition",
-        {sym("_ZNK5Actor11getPositionEv", "1.21.x")});
+        {sym("_ZNK5Actor11getPositionEv", "1.21-1.26")});
     add(entries_, "Player::getInventory",
-        {sym("_ZN6Player18getSuppliesContainerEv", "1.21.x")});
+        {sym("_ZN6Player18getSuppliesContainerEv", "1.21-1.26")});
 
     // --- script engine seam (phase-2 first-class lua) ----------------------
     add(entries_, "ScriptModuleMinecraft::registerBindings",
         {sym("_ZN36ScriptModuleMinecraft_ServerBindings16InitializeModuleER19ScriptModuleContext",
-             "1.21.x")});
+             "1.21-1.26")});
 }
 
 bool SignatureRegistry::loadFromFile(const std::filesystem::path& file) {
@@ -141,12 +146,22 @@ std::uintptr_t SignatureRegistry::resolve(const std::string& name) {
         return it->second;
     }
 
+    // Symbol candidates resolve through GlossSymbol against the loaded module;
+    // pattern candidates scan the module's executable memory. GlossOpen finds
+    // the already-loaded library (it does not dlopen a new copy).
+    GHandle handle = GlossOpen(moduleName_.c_str());
+
     std::uintptr_t address = 0;
     std::string matched;
     for (const auto& entry : entries_) {
         if (entry.name != name) continue;
         for (const auto& cand : entry.candidates) {
-            std::uintptr_t a = pl::signature::resolveSignature(cand.value, moduleName_);
+            std::uintptr_t a = 0;
+            if (cand.isPattern) {
+                a = scan::findPattern(moduleName_, cand.value);
+            } else if (handle != nullptr) {
+                a = GlossSymbol(handle, cand.value.c_str(), nullptr);
+            }
             if (a != 0) {
                 address = a;
                 matched = (cand.isPattern ? "pattern" : "symbol");

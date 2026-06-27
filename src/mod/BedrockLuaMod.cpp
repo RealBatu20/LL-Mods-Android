@@ -1,6 +1,6 @@
 #include "mod/BedrockLuaMod.hpp"
 
-#include <pl/cpp/Mod.hpp>
+#include <dlfcn.h>
 
 #include <atomic>
 #include <chrono>
@@ -35,7 +35,13 @@ struct BedrockLuaMod::Impl {
 };
 
 BedrockLuaMod::BedrockLuaMod() : impl_(std::make_unique<Impl>()) {}
-BedrockLuaMod::~BedrockLuaMod() = default;
+
+BedrockLuaMod::~BedrockLuaMod() {
+    // Full teardown while `this` and impl_ are still alive: disable() stops and
+    // joins the fallback ticker (so ~thread never sees a joinable thread and
+    // calls std::terminate) and removes hooks before the members are destroyed.
+    disable();
+}
 
 BedrockLuaMod& BedrockLuaMod::getInstance() {
     static BedrockLuaMod instance;
@@ -49,21 +55,22 @@ lua::LuaEventBus& BedrockLuaMod::events() { return impl_->events; }
 PackScanner& BedrockLuaMod::packs() { return impl_->packs; }
 
 namespace {
-// Reads the mod/data directories from the preloader context, tolerating either
-// std::filesystem::path or string-like return types.
+// Locates the directory libbedrocklua.so was loaded from (dladdr on a local
+// symbol). signatures.json, if shipped alongside the .so, is read from here;
+// otherwise the embedded defaults are used, so the mod is self-sufficient.
 std::filesystem::path queryModDir() {
-    try {
-        return std::filesystem::path(pl::mod::NativeMod::current()->getModDir());
-    } catch (...) {
-        return std::filesystem::current_path();
+    Dl_info info{};
+    if (dladdr(reinterpret_cast<const void*>(&queryModDir), &info) != 0 &&
+        info.dli_fname != nullptr) {
+        std::error_code ec;
+        auto p = std::filesystem::path(info.dli_fname).parent_path();
+        if (!p.empty()) return p;
     }
+    return std::filesystem::current_path();
 }
 std::filesystem::path queryDataDir() {
-    try {
-        return std::filesystem::path(pl::mod::NativeMod::current()->getDataDir());
-    } catch (...) {
-        return std::filesystem::current_path();
-    }
+    // Persist mod data next to the library by default.
+    return queryModDir();
 }
 }  // namespace
 

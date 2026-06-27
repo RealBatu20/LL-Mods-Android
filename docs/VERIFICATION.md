@@ -6,6 +6,11 @@ designed so that everything in the **[VERIFIED]** column runs regardless of the
 engine signatures, and everything in **[UNVERIFIED]** degrades to a catchable
 Lua error (never a crash) until its signature/offset is confirmed.
 
+Target range: **Minecraft Bedrock 1.21 – 1.26** (manifest also declares a `1.*`
+forward catch-all). The [VERIFIED] tier is version-independent and runs across
+the whole range; the [UNVERIFIED] tier resolves per running version from the
+candidate table and no-ops where a symbol does not match.
+
 ## Environment note
 
 The signature symbols in `src/sig/signatures.json` were authored as candidates
@@ -17,7 +22,7 @@ flipping items below to **[VERIFIED]** is the on-device step described in
 
 ## [VERIFIED] — offset-free, validated by logic + the example pack
 
-- [x] LeviLaunchroid mod lifecycle (`load/enable/disable/unload`, `PL_REGISTER_MOD`).
+- [x] Mod lifecycle (`load/enable/disable/unload`) driven from the constructor entry.
 - [x] Lua 5.4 VM creation, sandbox, error handling (no script error can abort the process).
 - [x] Behavior-pack `manifest.json` parsing and `language: "lua"` detection.
 - [x] Behavior-pack discovery + per-pack `LuaScriptHost`.

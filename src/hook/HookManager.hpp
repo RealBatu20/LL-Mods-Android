@@ -1,6 +1,6 @@
 #pragma once
 
-// HookManager - thin bookkeeping layer over pl::hook (GlossHook backend).
+// HookManager - thin bookkeeping layer over GlossHook inline hooks.
 //
 // Hook modules (LevelHooks, ChatHooks, PackStackHooks, ...) install their
 // detours through here so that disable()/unload() can tear everything down in
@@ -34,8 +34,7 @@ public:
 private:
     struct Entry {
         std::string label;
-        void* target;
-        void* detour;
+        void* handle;  // GHook returned by GlossHook
     };
     std::vector<Entry> entries_;
 };

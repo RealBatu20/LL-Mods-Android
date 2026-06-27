@@ -1,66 +1,66 @@
 {
-  "_comment": "Version-keyed signature table for bedrocklua. Each logical name lists candidate resolvers (mangled symbol names and/or byte patterns). At runtime the first candidate that resolves against the loaded libminecraftpe.so wins; an unresolved entry is a documented runtime state, not a build error. Symbols below are candidates derived from LeviLamina-style naming and MUST be verified against your target .so per docs/SIGNATURES.md before being marked VERIFIED.",
+  "_comment": "Version-keyed signature table for bedrocklua, targeting Minecraft Bedrock 1.21-1.26 (and beyond). Each logical name lists candidate resolvers (mangled symbol names and/or byte patterns); these core names are largely stable across these minors. At runtime the first candidate that resolves against the loaded libminecraftpe.so wins, so the same table works across versions; an unresolved entry is a documented runtime state (the feature degrades gracefully), not a build error. To support a new version, append version-tagged candidates here - the file is read from the mod directory at runtime, no recompile needed. Symbols below are candidates derived from LeviLamina-style naming and MUST be verified against your target .so per docs/SIGNATURES.md before being marked VERIFIED.",
   "module": "libminecraftpe.so",
   "signatures": {
     "Level::tick": {
       "candidates": [
-        { "symbol": "_ZN5Level4tickEv", "version": "1.21.x" },
-        { "symbol": "_ZN11ServerLevel4tickEv", "version": "1.21.x" }
+        { "symbol": "_ZN5Level4tickEv", "version": "1.21-1.26" },
+        { "symbol": "_ZN11ServerLevel4tickEv", "version": "1.21-1.26" }
       ]
     },
     "ServerLevel::onLevelLoaded": {
       "candidates": [
-        { "symbol": "_ZN5Level13onLevelLoadedEv", "version": "1.21.x" }
+        { "symbol": "_ZN5Level13onLevelLoadedEv", "version": "1.21-1.26" }
       ]
     },
     "ServerNetworkHandler::handleTextPacket": {
       "candidates": [
-        { "symbol": "_ZN20ServerNetworkHandler6handleERK18NetworkIdentifierRK10TextPacket", "version": "1.21.x" }
+        { "symbol": "_ZN20ServerNetworkHandler6handleERK18NetworkIdentifierRK10TextPacket", "version": "1.21-1.26" }
       ]
     },
     "TextPacket::createChat": {
       "candidates": [
-        { "symbol": "_ZN10TextPacket10createChatERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEES8_PS6_S8_S8_", "version": "1.21.x" }
+        { "symbol": "_ZN10TextPacket10createChatERKNSt6__ndk112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEES8_PS6_S8_S8_", "version": "1.21-1.26" }
       ]
     },
     "ServerPlayer::sendNetworkPacket": {
       "candidates": [
-        { "symbol": "_ZNK6Player17sendNetworkPacketER6Packet", "version": "1.21.x" }
+        { "symbol": "_ZNK6Player17sendNetworkPacketER6Packet", "version": "1.21-1.26" }
       ]
     },
     "MinecraftCommands::executeCommand": {
       "candidates": [
-        { "symbol": "_ZNK17MinecraftCommands14executeCommandE13CommandContextb", "version": "1.21.x" }
+        { "symbol": "_ZNK17MinecraftCommands14executeCommandE13CommandContextb", "version": "1.21-1.26" }
       ]
     },
     "ResourcePackManager::setStack": {
       "candidates": [
-        { "symbol": "_ZN19ResourcePackManager8setStackENSt6__ndk110unique_ptrI16ResourcePackStackNS0_14default_deleteIS2_EEEE16ResourcePackTypeb", "version": "1.21.x" }
+        { "symbol": "_ZN19ResourcePackManager8setStackENSt6__ndk110unique_ptrI16ResourcePackStackNS0_14default_deleteIS2_EEEE16ResourcePackTypeb", "version": "1.21-1.26" }
       ]
     },
     "Level::getActivePlayerCount": {
       "candidates": [
-        { "symbol": "_ZNK5Level20getActivePlayerCountEv", "version": "1.21.x" }
+        { "symbol": "_ZNK5Level20getActivePlayerCountEv", "version": "1.21-1.26" }
       ]
     },
     "Actor::getNameTag": {
       "candidates": [
-        { "symbol": "_ZNK5Actor10getNameTagB5cxx11Ev", "version": "1.21.x" }
+        { "symbol": "_ZNK5Actor10getNameTagB5cxx11Ev", "version": "1.21-1.26" }
       ]
     },
     "Actor::getPosition": {
       "candidates": [
-        { "symbol": "_ZNK5Actor11getPositionEv", "version": "1.21.x" }
+        { "symbol": "_ZNK5Actor11getPositionEv", "version": "1.21-1.26" }
       ]
     },
     "Player::getInventory": {
       "candidates": [
-        { "symbol": "_ZN6Player18getSuppliesContainerEv", "version": "1.21.x" }
+        { "symbol": "_ZN6Player18getSuppliesContainerEv", "version": "1.21-1.26" }
       ]
     },
     "ScriptModuleMinecraft::registerBindings": {
       "candidates": [
-        { "symbol": "_ZN36ScriptModuleMinecraft_ServerBindings16InitializeModuleER19ScriptModuleContext", "version": "1.21.x" }
+        { "symbol": "_ZN36ScriptModuleMinecraft_ServerBindings16InitializeModuleER19ScriptModuleContext", "version": "1.21-1.26" }
       ]
     }
   }

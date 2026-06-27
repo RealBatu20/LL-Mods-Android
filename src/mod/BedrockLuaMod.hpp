@@ -35,7 +35,7 @@ class BedrockLuaMod {
 public:
     static BedrockLuaMod& getInstance();
 
-    // LeviLaunchroid lifecycle (see PL_REGISTER_MOD).
+    // Mod lifecycle, driven from the constructor entry in main.cpp.
     bool load();
     bool enable();
     bool disable();

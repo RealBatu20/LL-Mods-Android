@@ -1,9 +1,10 @@
 # Resolving signatures for a Minecraft version
 
-bedrocklua keeps every engine target in
-[`src/sig/signatures.json`](../src/sig/signatures.json). Each logical name lists
-candidate resolvers (mangled symbol names and/or byte patterns). At startup the
-first candidate that resolves against the loaded `libminecraftpe.so` wins.
+bedrocklua targets **Minecraft Bedrock 1.21 – 1.26** (and beyond). It keeps every
+engine target in [`src/sig/signatures.json`](../src/sig/signatures.json). Each
+logical name lists candidate resolvers (mangled symbol names and/or byte
+patterns) — list candidates from multiple versions and the first that resolves
+against the loaded `libminecraftpe.so` wins, so one table serves the whole range.
 
 ```json
 "Level::tick": {
@@ -14,8 +15,11 @@ first candidate that resolves against the loaded `libminecraftpe.so` wins.
 }
 ```
 
-`symbol` is passed to the symbol resolver; `pattern` is a byte signature (`?` /
-`??` = any byte). Both are tried via `pl::signature::resolveSignature`.
+`symbol` candidates resolve through GlossHook's `GlossSymbol` against the loaded
+`libminecraftpe.so`; `pattern` candidates (`?` / `??` = any byte) are scanned
+over the module's executable mappings by `src/sig/ModuleScanner.cpp` (via
+`/proc/self/maps`). Byte patterns are the reliable path for stripped Bedrock
+internals that export no dynamic symbol.
 
 ## Why this is version-keyed instead of hardcoded
 

@@ -1,6 +1,6 @@
 #include "hook/HookManager.hpp"
 
-#include <pl/cpp/Hook.hpp>
+#include <Gloss.h>
 
 #include "mod/BedrockLuaMod.hpp"
 #include "util/Log.hpp"
@@ -13,9 +13,15 @@ bool HookManager::install(const std::string& label, std::uintptr_t target, void*
         log::warn("[hook] {} skipped: target signature unresolved", label);
         return false;
     }
-    pl::hook::hook(reinterpret_cast<void*>(target), detour, original,
-                   pl::hook::PriorityNormal);
-    entries_.push_back({label, reinterpret_cast<void*>(target), detour});
+    // GlossHook installs an inline hook and writes the trampoline (call the
+    // original/next implementation) into *original. It auto-detects the
+    // instruction set from the target address.
+    GHook handle = GlossHook(reinterpret_cast<void*>(target), detour, original);
+    if (handle == nullptr) {
+        log::warn("[hook] {} failed: GlossHook returned null for {:#x}", label, target);
+        return false;
+    }
+    entries_.push_back({label, handle});
     log::info("[hook] {} installed at {:#x}", label, target);
     return true;
 }
@@ -29,7 +35,7 @@ void HookManager::installGameHooks(Runtime& rt) {
 
 void HookManager::uninstallAll() {
     for (auto it = entries_.rbegin(); it != entries_.rend(); ++it) {
-        pl::hook::unhook(it->target, it->detour);
+        if (it->handle) GlossHookDelete(static_cast<GHook>(it->handle));
     }
     entries_.clear();
 }

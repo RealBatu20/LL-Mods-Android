@@ -2,11 +2,12 @@ cmake_minimum_required(VERSION 3.18)
 project(bedrocklua LANGUAGES C CXX)
 
 # ---------------------------------------------------------------------------
-# bedrocklua - a Lua modding API for Minecraft Bedrock (Android / LeviLaunchroid)
+# bedrocklua - a Lua modding API for Minecraft Bedrock (Android / arm64-v8a)
 #
 # Re-implementation of the concept behind the archived Imrglop/bedrock.lua
-# (which targeted Win10 Edition + MinHook) on the Android / ARM64 stack using
-# LeviLaunchroid's preloader-android (GlossHook backend). Produces
+# (Win10 Edition + MinHook) on the Android stack. Self-contained: it links the
+# GlossHook inline-hooking library statically and resolves engine symbols at
+# runtime, so it needs no separately built libpreloader.so. Produces
 # libbedrocklua.so.
 # ---------------------------------------------------------------------------
 
@@ -14,26 +15,25 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 
-# sol2 + the binding layer rely on exceptions/RTTI. Keep the size-oriented flags
-# from the existing project but re-enable exceptions/RTTI for our translation
-# units (the base preloader template strips them).
+# sol2 + the binding layer rely on exceptions/RTTI.
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -fvisibility=hidden -ffunction-sections -fdata-sections -fexceptions -frtti -w")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -O2 -fvisibility=hidden -ffunction-sections -fdata-sections -w")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections,--strip-all -s")
 
+if(NOT DEFINED ANDROID_ABI)
+    set(ANDROID_ABI "arm64-v8a")
+endif()
+if(NOT "${ANDROID_ABI}" STREQUAL "arm64-v8a")
+    message(WARNING "bedrocklua targets arm64-v8a; GlossHook is vendored for arm64 only (ABI='${ANDROID_ABI}').")
+endif()
+
 include(FetchContent)
 
-# --- core libs ------------------------------------------------------------
-FetchContent_Declare(glm
-    GIT_REPOSITORY https://github.com/g-truc/glm.git
-    GIT_TAG 0.9.9.8)
-
+# --- pure source/header libs (build cleanly under the NDK) -----------------
 FetchContent_Declare(fmt
     GIT_REPOSITORY https://github.com/fmtlib/fmt.git
     GIT_TAG 10.2.1)
 
-# Declared with the same name preloader-android uses internally so FetchContent
-# de-duplicates instead of creating a second nlohmann_json target.
 FetchContent_Declare(nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG v3.11.3)
@@ -53,32 +53,26 @@ FetchContent_Declare(sol2
     GIT_REPOSITORY https://github.com/ThePhd/sol2.git
     GIT_TAG v3.3.0)
 
-FetchContent_MakeAvailable(fmt glm nlohmann_json lua sol2)
+FetchContent_MakeAvailable(fmt nlohmann_json lua sol2)
 
-# --- LeviLaunchroid preloader (provides pl::mod / pl::hook / pl::signature) -
-FetchContent_Declare(preloader_android
-    GIT_REPOSITORY https://github.com/liteLDev/preloader-android.git
-    GIT_TAG main)
-FetchContent_GetProperties(preloader_android)
-if(NOT preloader_android_POPULATED)
-    FetchContent_Populate(preloader_android)
-
-    # The preloader template assumes libstdc++ <format>; the Android NDK we
-    # build with does not ship it, so route std::format through fmt instead.
-    file(READ "${preloader_android_SOURCE_DIR}/src/pl/Logger.h" LOGGER_CONTENT)
-    string(REPLACE "#include <format>" "#include <fmt/format.h>" LOGGER_CONTENT "${LOGGER_CONTENT}")
-    string(REPLACE "std::vformat" "fmt::vformat" LOGGER_CONTENT "${LOGGER_CONTENT}")
-    string(REPLACE "std::make_format_args" "fmt::make_format_args" LOGGER_CONTENT "${LOGGER_CONTENT}")
-    file(WRITE "${preloader_android_SOURCE_DIR}/src/pl/Logger.h" "${LOGGER_CONTENT}")
-
-    add_subdirectory(${preloader_android_SOURCE_DIR} ${preloader_android_BINARY_DIR})
+# --- GlossHook (vendored prebuilt ARM64 static lib + header) ---------------
+# Run scripts/fetch_deps.sh to populate third_party/glosshook. CI does this
+# before configuring.
+set(GLOSSHOOK_DIR "${CMAKE_SOURCE_DIR}/third_party/glosshook"
+    CACHE PATH "Location of the vendored GlossHook header + prebuilt ARM64 static lib")
+set(_gloss_lib "${GLOSSHOOK_DIR}/lib/arm64/libGlossHook.a")
+set(_gloss_inc "${GLOSSHOOK_DIR}/include")
+if(NOT EXISTS "${_gloss_lib}")
+    message(FATAL_ERROR
+        "GlossHook static lib not found at ${_gloss_lib}.\n"
+        "Run scripts/fetch_deps.sh first (downloads XMDS/GlossHook), or pass "
+        "-DGLOSSHOOK_DIR=...")
 endif()
 
-target_link_libraries(preloader PUBLIC fmt::fmt glm::glm)
-
-# Note: the hooking backend is GlossHook, which preloader-android links into
-# libpreloader.so itself (selected by ANDROID_ABI). We reach it purely through
-# pl::hook, so no separate hook library is needed here.
+add_library(GlossHook STATIC IMPORTED)
+set_target_properties(GlossHook PROPERTIES
+    IMPORTED_LOCATION             "${_gloss_lib}"
+    INTERFACE_INCLUDE_DIRECTORIES "${_gloss_inc}")
 
 # --- the mod --------------------------------------------------------------
 file(GLOB_RECURSE BEDROCKLUA_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/*.cpp")
@@ -90,13 +84,15 @@ target_compile_definitions(bedrocklua PRIVATE
     SOL_EXCEPTIONS_SAFE_PROPAGATION=1)
 
 target_include_directories(bedrocklua PRIVATE
-    ${CMAKE_SOURCE_DIR}/src)
+    ${CMAKE_SOURCE_DIR}/src
+    ${_gloss_inc})
 
+# GlossHook (inline hooking) + Android log + dl (dlopen/dladdr).
 target_link_libraries(bedrocklua
-    preloader
+    GlossHook
     sol2::sol2
     lua_static
     fmt::fmt
-    glm::glm
     nlohmann_json::nlohmann_json
-    log)
+    log
+    dl)

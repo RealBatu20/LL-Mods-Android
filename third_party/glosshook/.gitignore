@@ -1,0 +1,3 @@
+# Vendored GlossHook artifacts are fetched by scripts/fetch_deps.sh, not committed.
+include/
+lib/
