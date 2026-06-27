@@ -16,6 +16,19 @@
 //     ],
 //     "dependencies": [ { "module_name": "@minecraft/server", "version": "1.x" } ]
 //   }
+//
+// bedrocklua extension: a pack may import external Lua API modules (from a URL,
+// or a local/relative path) that become require()/import()-able by name. This is
+// the escape hatch for when the built-in @minecraft/server surface is
+// insufficient - bring your own Lua API from anywhere:
+//
+//   "bedrocklua": {
+//     "imports": [
+//       { "name": "json",  "source": "https://example.com/json.lua",
+//         "sha256": "<hex>", "optional": false },
+//       { "name": "mylib", "source": "scripts/lib/mylib.lua" }
+//     ]
+//   }
 
 #include <array>
 #include <filesystem>
@@ -34,6 +47,14 @@ struct ScriptModule {
     std::array<int, 3> version{0, 0, 0};
 };
 
+// An external Lua module a pack wants importable by name.
+struct LuaImport {
+    std::string name;     // require()/import() key
+    std::string source;   // http(s):// URL, file:// URL, or pack-relative/abs path
+    std::string sha256;   // optional lowercase hex; verified after fetch when set
+    bool optional = false;  // when true, a failed import logs and is skipped
+};
+
 struct PackManifest {
     std::string name;
     std::string uuid;            // header uuid
@@ -41,6 +62,7 @@ struct PackManifest {
     std::array<int, 3> minEngineVersion{0, 0, 0};
     std::vector<ScriptModule> luaModules;        // script modules with language=lua
     std::vector<std::string> apiDependencies;    // e.g. "@minecraft/server"
+    std::vector<LuaImport> imports;              // bedrocklua.imports
 
     bool hasLua() const { return !luaModules.empty(); }
 

@@ -29,6 +29,7 @@ void installAll(lua::LuaScriptHost& host);
 // Module installers - each fills in part of the @minecraft/server table.
 // (Declared here so BindingRegistry.cpp can call across translation units.)
 void installSystem(lua::LuaScriptHost& host, sol::table& server);
+void installConstants(lua::LuaScriptHost& host, sol::table& server);
 void installVector3(lua::LuaScriptHost& host, sol::table& server);
 void installWorld(lua::LuaScriptHost& host, sol::table& server);
 void installDimension(lua::LuaScriptHost& host, sol::table& server);

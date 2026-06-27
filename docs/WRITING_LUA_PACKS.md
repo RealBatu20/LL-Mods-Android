@@ -33,6 +33,46 @@ Lua 5.4 sandbox with a `@minecraft/server`-style API.
 
 Only the `language` value differs from a vanilla JavaScript pack.
 
+## Importing external Lua modules (bring your own API)
+
+When the built-in `@minecraft/server` surface isn't enough, a pack can import
+extra Lua modules — from a URL or a local file — and `require()`/`import()` them
+by name. Declare them in a `bedrocklua.imports` block:
+
+```json
+{
+  "modules": [ { "type": "script", "language": "lua", "entry": "scripts/main.lua" } ],
+  "bedrocklua": {
+    "imports": [
+      { "name": "json",  "source": "https://example.com/json.lua",
+        "sha256": "<hex>", "optional": false },
+      { "name": "mylib", "source": "scripts/lib/mylib.lua" }
+    ]
+  }
+}
+```
+
+| field | meaning |
+| --- | --- |
+| `name` | the key you `require(name)` / `import(name)` with |
+| `source` | `http(s)://` URL, `file://` URL, absolute path, or a path relative to the pack (also accepts `url`) |
+| `sha256` | optional lowercase hex; the fetched bytes are verified against it |
+| `optional` | when `true`, a failed import is skipped with a warning instead of erroring |
+
+Notes:
+- URL modules are fetched through the game process's network stack (Android
+  Java/TLS) and **cached** under the mod data dir, so later loads work offline; a
+  failed fetch falls back to the cached copy.
+- A non-optional import that fails still registers, but `require()`-ing it raises
+  a catchable Lua error naming the failure — wrap risky imports in `pcall`.
+- The imported module's `return` value is what `require` gives you, exactly like
+  standard Lua modules.
+
+```lua
+local mylib = require("mylib")       -- or import("mylib")
+local json  = require("json")
+```
+
 ## Importing the API
 
 ```lua
@@ -71,6 +111,15 @@ The VM opens `base`, `string`, `table`, `math`, `coroutine`, `utf8`, `os`
 | `world.beforeEvents.<name>.subscribe(fn)` | Working. Set `ev.cancel = true` to cancel. |
 | `world.getAllPlayers()` / `getPlayers()` | Returns `{}` until the player-list accessor is verified. |
 | `world.getDimension(id)` | Returns a dimension handle; its engine ops raise a catchable error until verified. |
+| `world.setDynamicProperty(id, v)` / `getDynamicProperty(id)` | **Works** — session-scoped in-memory store (offset-free). `getDynamicPropertyIds()`, `clearDynamicProperties()` too. |
+| `world.getTimeOfDay()` / `setTimeOfDay()` / `getDay()` | Offset-dependent; degrade cleanly. |
+
+### Constants
+
+`@minecraft/server` ships offset-free constant tables: `GameMode`,
+`MinecraftDimensionTypes`, `EntityComponentTypes`, `ItemComponentTypes`,
+`BlockComponentTypes`, `EquipmentSlot`, `EntityDamageCause`, `DisplaySlotId`,
+plus `TicksPerSecond` (20) and `TicksPerDay` (24000).
 
 ### Events delivered today
 

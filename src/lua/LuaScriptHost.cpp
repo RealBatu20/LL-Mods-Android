@@ -4,6 +4,7 @@
 
 #include "binding/BindingRegistry.hpp"
 #include "lua/LuaEventBus.hpp"
+#include "lua/ModuleImporter.hpp"
 #include "mod/BedrockLuaMod.hpp"
 #include "util/Log.hpp"
 
@@ -28,6 +29,14 @@ bool LuaScriptHost::start(const std::filesystem::path& entryRelative) {
 
     // Build the @minecraft/server API surface for this host.
     binding::installAll(*this);
+
+    // Register external Lua modules declared in the pack manifest (require/import
+    // by name) before the entry runs - the escape hatch for bringing your own
+    // API from a URL or local file.
+    if (!imports_.empty()) {
+        int n = importer::apply(*this, imports_, packDir_, cacheDir_);
+        log::info("[{}] registered {}/{} declared imports", packId_, n, imports_.size());
+    }
 
     // Register with the event bus before running so the script can subscribe and
     // immediately start receiving events.

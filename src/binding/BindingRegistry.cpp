@@ -23,6 +23,7 @@ void installAll(lua::LuaScriptHost& host) {
     // @minecraft/server
     sol::table server = lua.create_table();
     installSystem(host, server);
+    installConstants(host, server);
     installVector3(host, server);
     installWorld(host, server);     // must run before installEvents (adds world)
     installDimension(host, server);

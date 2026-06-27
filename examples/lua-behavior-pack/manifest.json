@@ -25,5 +25,18 @@
       "module_name": "@minecraft/server-ui",
       "version": "1.0.0"
     }
-  ]
+  ],
+  "bedrocklua": {
+    "imports": [
+      {
+        "name": "greet",
+        "source": "scripts/lib/greet.lua"
+      },
+      {
+        "name": "remote_demo",
+        "source": "https://raw.githubusercontent.com/rxi/json.lua/master/json.lua",
+        "optional": true
+      }
+    ]
+  }
 }

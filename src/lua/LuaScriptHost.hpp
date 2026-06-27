@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "lua/LuaState.hpp"
+#include "pack/PackManifest.hpp"
 
 namespace bedrocklua {
 struct Runtime;
@@ -32,7 +33,15 @@ public:
     LuaScriptHost(const LuaScriptHost&) = delete;
     LuaScriptHost& operator=(const LuaScriptHost&) = delete;
 
-    // Builds the binding surface and runs the entry script.
+    // External Lua modules to register (require/import-able) before the entry
+    // runs. cacheDir is where downloaded URL modules are cached. Call before
+    // start().
+    void configureImports(std::vector<LuaImport> imports, std::filesystem::path cacheDir) {
+        imports_ = std::move(imports);
+        cacheDir_ = std::move(cacheDir);
+    }
+
+    // Builds the binding surface, registers imports, and runs the entry script.
     bool start(const std::filesystem::path& entryRelative);
 
     // Advances the scheduler by one game tick (drives system.run* callbacks).
@@ -79,6 +88,9 @@ private:
     std::string packId_;
     std::filesystem::path packDir_;
     LuaState state_;
+
+    std::vector<LuaImport> imports_;
+    std::filesystem::path cacheDir_;
 
     std::uint64_t currentTick_ = 0;
     int nextHandle_ = 1;

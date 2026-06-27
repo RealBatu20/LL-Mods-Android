@@ -70,6 +70,24 @@ Result<PackManifest> parseJson(const json& root) {
         }
     }
 
+    // bedrocklua extension: external Lua module imports.
+    if (root.contains("bedrocklua") && root["bedrocklua"].is_object()) {
+        const auto& blua = root["bedrocklua"];
+        if (blua.contains("imports") && blua["imports"].is_array()) {
+            for (const auto& imp : blua["imports"]) {
+                if (!imp.is_object()) continue;
+                LuaImport li;
+                li.name = imp.value("name", "");
+                li.source = imp.value("source", "");
+                if (li.source.empty()) li.source = imp.value("url", "");  // accept "url" too
+                li.sha256 = strings::toLower(imp.value("sha256", ""));
+                li.optional = imp.value("optional", false);
+                if (li.name.empty() || li.source.empty()) continue;  // unusable
+                mf.imports.push_back(std::move(li));
+            }
+        }
+    }
+
     return Result<PackManifest>(std::move(mf));
 }
 }  // namespace

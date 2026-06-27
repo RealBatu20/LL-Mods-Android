@@ -65,6 +65,31 @@ If **no** engine hook resolves, bedrocklua starts a ~20 Hz fallback ticker so th
 scheduler and events still run — meaning the example pack is exercisable even
 before any offset is verified.
 
+## Bring your own Lua API (manifest imports)
+
+When the built-in surface isn't enough, a pack can import extra Lua modules from
+a **URL** or a **local file** and `require()`/`import()` them by name, via a
+`bedrocklua.imports` block in `manifest.json`:
+
+```json
+"bedrocklua": {
+  "imports": [
+    { "name": "json",  "source": "https://example.com/json.lua", "sha256": "<hex>" },
+    { "name": "mylib", "source": "scripts/lib/mylib.lua" }
+  ]
+}
+```
+
+URL modules are fetched through the game process (Android Java/TLS), cached for
+offline use, and optionally `sha256`-verified. See
+[docs/WRITING_LUA_PACKS.md](docs/WRITING_LUA_PACKS.md#importing-external-lua-modules-bring-your-own-api).
+
+## Releases
+
+The [Release workflow](.github/workflows/release.yml) builds and publishes
+`libbedrocklua.so` (+ `bedrocklua.levipack` and `.sha256` checksums) to a rolling
+prerelease on each push, and to a versioned release on `v*` tags.
+
 ## Build
 
 Requirements: Android NDK r26b, CMake ≥ 3.18, network access (deps are fetched).

@@ -14,6 +14,24 @@ local system = mc.system
 -- 1. Log + (degraded) broadcast a message at startup.
 world.sendMessage("bedrocklua example loaded!")
 
+-- 1b. Use a module imported by name via the manifest's bedrocklua.imports
+-- (local file source -> always works). The optional URL import "remote_demo"
+-- is loaded only if reachable; we pcall it so being offline is harmless.
+local greet = require("greet")
+world.sendMessage(greet.greeting("world"))
+
+local ok_remote, json = pcall(require, "remote_demo")
+if ok_remote and type(json) == "table" then
+    world.sendMessage("remote_demo lua module loaded from the internet")
+else
+    world.sendMessage("remote_demo not loaded (offline/optional) - that's fine")
+end
+
+-- 1c. Session-scoped dynamic properties (offset-free, fully working).
+world.setDynamicProperty("launchCount", (world.getDynamicProperty("launchCount") or 0) + 1)
+world.sendMessage("dynamic property launchCount = " ..
+    tostring(world.getDynamicProperty("launchCount")))
+
 -- 2. Vector math (offset-free, always works).
 local a = mc.Vector.create(1, 2, 3)
 local b = mc.Vector.up
