@@ -15,6 +15,11 @@ jobs:
       with:
         ndk-version: r26b
 
+    - name: Fetch dependencies (vendor GlossHook)
+      env:
+        ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+      run: bash scripts/fetch_deps.sh
+
     - name: Build libbedrocklua.so
       run: |
         set -euo pipefail

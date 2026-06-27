@@ -1,11 +1,11 @@
 #include "sig/SignatureRegistry.hpp"
 
-#include <pl/cpp/Signature.hpp>
-
+#include <Gloss.h>
 #include <nlohmann/json.hpp>
 
 #include <fstream>
 
+#include "sig/ModuleScanner.hpp"
 #include "util/Log.hpp"
 
 namespace bedrocklua {
@@ -146,12 +146,22 @@ std::uintptr_t SignatureRegistry::resolve(const std::string& name) {
         return it->second;
     }
 
+    // Symbol candidates resolve through GlossSymbol against the loaded module;
+    // pattern candidates scan the module's executable memory. GlossOpen finds
+    // the already-loaded library (it does not dlopen a new copy).
+    GHandle handle = GlossOpen(moduleName_.c_str());
+
     std::uintptr_t address = 0;
     std::string matched;
     for (const auto& entry : entries_) {
         if (entry.name != name) continue;
         for (const auto& cand : entry.candidates) {
-            std::uintptr_t a = pl::signature::resolveSignature(cand.value, moduleName_);
+            std::uintptr_t a = 0;
+            if (cand.isPattern) {
+                a = scan::findPattern(moduleName_, cand.value);
+            } else if (handle != nullptr) {
+                a = GlossSymbol(handle, cand.value.c_str(), nullptr);
+            }
             if (a != 0) {
                 address = a;
                 matched = (cand.isPattern ? "pattern" : "symbol");

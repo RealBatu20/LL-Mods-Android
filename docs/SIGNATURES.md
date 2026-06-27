@@ -15,8 +15,11 @@ against the loaded `libminecraftpe.so` wins, so one table serves the whole range
 }
 ```
 
-`symbol` is passed to the symbol resolver; `pattern` is a byte signature (`?` /
-`??` = any byte). Both are tried via `pl::signature::resolveSignature`.
+`symbol` candidates resolve through GlossHook's `GlossSymbol` against the loaded
+`libminecraftpe.so`; `pattern` candidates (`?` / `??` = any byte) are scanned
+over the module's executable mappings by `src/sig/ModuleScanner.cpp` (via
+`/proc/self/maps`). Byte patterns are the reliable path for stripped Bedrock
+internals that export no dynamic symbol.
 
 ## Why this is version-keyed instead of hardcoded
 

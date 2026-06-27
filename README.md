@@ -29,8 +29,11 @@ bedrocklua discovers such packs, runs their entry script in an embedded
 This is a ground-up re-implementation of the concept behind the archived
 [`Imrglop/bedrock.lua`](https://github.com/Imrglop/bedrock.lua) (which targeted
 Windows 10 Edition with MinHook); none of that Windows code is portable to
-Android, so bedrocklua is built on LeviLaunchroid's `preloader-android` (whose
-GlossHook backend provides `pl::hook`) for ARM64.
+Android. bedrocklua is **self-contained**: it links the
+[GlossHook](https://github.com/XMDS/GlossHook) inline-hooking library statically
+and resolves engine symbols at runtime, so it needs no separately built
+`libpreloader.so`. The mod's constructor fires when LeviLauncher loads the
+`.so`, waits for `libminecraftpe.so`, then starts the runtime.
 
 ## Supported versions
 
@@ -65,11 +68,12 @@ before any offset is verified.
 ## Build
 
 Requirements: Android NDK r26b, CMake ≥ 3.18, network access (deps are fetched).
-The hooking backend (GlossHook) ships inside `preloader-android`, so there is no
-separate native library to provide.
 
 ```sh
-# Configure + build
+# 1. Vendor the GlossHook backend (header + prebuilt arm64 static lib)
+bash scripts/fetch_deps.sh
+
+# 2. Configure + build
 cmake -B build \
   -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake \
   -DANDROID_ABI=arm64-v8a \
@@ -111,15 +115,17 @@ end, 20)
 
 ```
 src/
-  main.cpp                 PL_REGISTER_MOD entry
-  mod/                     lifecycle + fallback ticker
+  main.cpp                 constructor entry (waits for libminecraftpe.so)
+  mod/                     lifecycle + fallback ticker, dladdr mod dir
   lua/                     LuaState (sol2), LuaScriptHost (scheduler), LuaEventBus
   pack/                    manifest parsing + behavior-pack discovery
   binding/                 @minecraft/server + @minecraft/server-ui mirror
-  hook/                    Level/Chat/PackStack hooks + phase-2 script-engine seam
-  sig/                     version-keyed signature table
+  hook/                    HookManager (GlossHook) + Level/Chat/PackStack + seam
+  sig/                     version-keyed signatures + /proc/self/maps scanner
   nbt/                     Bedrock LittleEndian + Network (VarInt/ZigZag) NBT
   util/                    logging, Result, ABI string reader
+scripts/fetch_deps.sh      vendors GlossHook into third_party/glosshook
+third_party/glosshook/     GlossHook header + prebuilt arm64 static lib (fetched)
 examples/lua-behavior-pack Demo pack
 docs/                      API + signatures + verification
 packaging/package.sh       .levipack builder

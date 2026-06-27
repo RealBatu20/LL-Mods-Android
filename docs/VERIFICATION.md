@@ -22,7 +22,7 @@ flipping items below to **[VERIFIED]** is the on-device step described in
 
 ## [VERIFIED] — offset-free, validated by logic + the example pack
 
-- [x] LeviLaunchroid mod lifecycle (`load/enable/disable/unload`, `PL_REGISTER_MOD`).
+- [x] Mod lifecycle (`load/enable/disable/unload`) driven from the constructor entry.
 - [x] Lua 5.4 VM creation, sandbox, error handling (no script error can abort the process).
 - [x] Behavior-pack `manifest.json` parsing and `language: "lua"` detection.
 - [x] Behavior-pack discovery + per-pack `LuaScriptHost`.
