@@ -32,6 +32,15 @@ Windows 10 Edition with MinHook); none of that Windows code is portable to
 Android, so bedrocklua is built on LeviLaunchroid's `preloader-android` (whose
 GlossHook backend provides `pl::hook`) for ARM64.
 
+## Supported versions
+
+Declared for **Minecraft Bedrock 1.21.* – 1.26.*** (plus a `1.*` forward
+catch-all in `manifest.json`). The core runtime — the Lua VM, behavior-pack
+`language:"lua"` loading, scheduler, events, `Vector`/`ItemStack` — is
+**version-independent** and runs on any of them. Engine-offset features resolve
+per-version from the candidate table and degrade gracefully where a symbol does
+not match the running build, so a broad version declaration is safe.
+
 ## What works today vs. what needs a verified binary
 
 The runtime splits cleanly into two tiers:
