@@ -29,8 +29,8 @@ bedrocklua discovers such packs, runs their entry script in an embedded
 This is a ground-up re-implementation of the concept behind the archived
 [`Imrglop/bedrock.lua`](https://github.com/Imrglop/bedrock.lua) (which targeted
 Windows 10 Edition with MinHook); none of that Windows code is portable to
-Android, so bedrocklua is built on LeviLaunchroid's `preloader-android` + Dobby
-for ARM64.
+Android, so bedrocklua is built on LeviLaunchroid's `preloader-android` (whose
+GlossHook backend provides `pl::hook`) for ARM64.
 
 ## What works today vs. what needs a verified binary
 
@@ -56,12 +56,11 @@ before any offset is verified.
 ## Build
 
 Requirements: Android NDK r26b, CMake ≥ 3.18, network access (deps are fetched).
+The hooking backend (GlossHook) ships inside `preloader-android`, so there is no
+separate native library to provide.
 
 ```sh
-# 1. Provide a prebuilt Dobby static lib (see Dobby/README.md) at
-#    Dobby/arm64-v8a/libdobby.a   (CI builds this automatically)
-
-# 2. Configure + build
+# Configure + build
 cmake -B build \
   -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake \
   -DANDROID_ABI=arm64-v8a \
