@@ -1,5 +1,9 @@
 #include "binding/BindingRegistry.hpp"
 
+#include <memory>
+#include <string>
+#include <unordered_map>
+
 #include "lua/LuaScriptHost.hpp"
 #include "mod/BedrockLuaMod.hpp"
 #include "sig/SignatureRegistry.hpp"
@@ -80,6 +84,45 @@ void installWorld(lua::LuaScriptHost& host, sol::table& server) {
             if (r.valid()) return r.get<sol::object>();
         }
         return sol::object{};  // nil
+    });
+
+    // --- world dynamic properties (offset-free, in-memory) -----------------
+    // Mirrors world.setDynamicProperty/getDynamicProperty. Backed by an in-memory
+    // store for the session; genuinely usable for script state without any engine
+    // offset. (Persistence to the world save is the offset-dependent extension.)
+    auto store = std::make_shared<std::unordered_map<std::string, sol::object>>();
+    world.set_function("setDynamicProperty", [store](const std::string& id, sol::object value) {
+        if (!value.valid() || value.get_type() == sol::type::lua_nil) {
+            store->erase(id);
+        } else {
+            (*store)[id] = value;
+        }
+    });
+    world.set_function("getDynamicProperty",
+                       [store](const std::string& id) -> sol::object {
+                           auto it = store->find(id);
+                           return it != store->end() ? it->second : sol::object{};  // nil
+                       });
+    world.set_function("getDynamicPropertyIds", [&host, store]() -> sol::table {
+        sol::table ids = host.state().sol().create_table();
+        int i = 1;
+        for (auto& kv : *store) ids[i++] = kv.first;
+        return ids;
+    });
+    world.set_function("clearDynamicProperties", [store]() { store->clear(); });
+
+    // --- time accessors (offset-dependent) ---------------------------------
+    world.set_function("getTimeOfDay", [&host]() -> int {
+        unavailable(host, "world.getTimeOfDay", "Level::getTime");
+    });
+    world.set_function("setTimeOfDay", [&host](sol::object) {
+        unavailable(host, "world.setTimeOfDay", "Level::setTime");
+    });
+    world.set_function("getDay", [&host]() -> int {
+        unavailable(host, "world.getDay", "Level::getDay");
+    });
+    world.set_function("getDefaultSpawnLocation", [&host]() {
+        unavailable(host, "world.getDefaultSpawnLocation", "Level::getDefaultSpawn");
     });
 
     server["world"] = world;

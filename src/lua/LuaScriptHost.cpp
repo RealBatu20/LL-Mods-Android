@@ -4,6 +4,7 @@
 
 #include "binding/BindingRegistry.hpp"
 #include "lua/LuaEventBus.hpp"
+#include "lua/ModuleImporter.hpp"
 #include "mod/BedrockLuaMod.hpp"
 #include "util/Log.hpp"
 
@@ -13,6 +14,8 @@ LuaScriptHost::LuaScriptHost(Runtime& rt, std::string packId, std::filesystem::p
     : rt_(rt), packId_(std::move(packId)), packDir_(std::move(packDir)) {}
 
 LuaScriptHost::~LuaScriptHost() {
+    // Stop workers from posting into a dying host (they just drop their result).
+    mailbox_->alive.store(false);
     rt_.events.unregisterHost(this);
 }
 
@@ -28,6 +31,14 @@ bool LuaScriptHost::start(const std::filesystem::path& entryRelative) {
 
     // Build the @minecraft/server API surface for this host.
     binding::installAll(*this);
+
+    // Register external Lua modules declared in the pack manifest (require/import
+    // by name) before the entry runs - the escape hatch for bringing your own
+    // API from a URL or local file.
+    if (!imports_.empty()) {
+        int n = importer::apply(*this, imports_, packDir_, cacheDir_);
+        log::info("[{}] registered {}/{} declared imports", packId_, n, imports_.size());
+    }
 
     // Register with the event bus before running so the script can subscribe and
     // immediately start receiving events.
@@ -47,6 +58,18 @@ bool LuaScriptHost::start(const std::filesystem::path& entryRelative) {
 
 void LuaScriptHost::tick(std::uint64_t currentTick) {
     currentTick_ = currentTick;
+
+    // Run any results handed back by worker threads (async net fetches, ...) on
+    // the game thread before the scheduler.
+    {
+        std::vector<std::function<void()>> due;
+        {
+            std::lock_guard<std::mutex> lk(mailbox_->mutex);
+            due.swap(mailbox_->queue);
+        }
+        for (auto& fn : due) fn();
+    }
+
     if (tasks_.empty()) return;
 
     // Snapshot the count: callbacks may schedule new tasks (appended at the end

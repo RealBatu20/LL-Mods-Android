@@ -23,8 +23,11 @@ instead of `"language": "javascript"`:
 ```
 
 bedrocklua discovers such packs, runs their entry script in an embedded
-**Lua 5.4** VM (via [sol2](https://github.com/ThePhd/sol2)), and exposes a broad
-`@minecraft/server`-style API to the script.
+**Lua 5.4** VM (via [sol2](https://github.com/ThePhd/sol2)), and exposes its own
+**`@bedrocklua`** module family — modelled on the vanilla `@minecraft/*` packages
+but in bedrocklua's own namespace: `@bedrocklua` (core), `@bedrocklua-ui`
+(forms), `@bedrocklua-admin` (administration), `@bedrocklua-net` (networking),
+each versioned `0.1.0`.
 
 This is a ground-up re-implementation of the concept behind the archived
 [`Imrglop/bedrock.lua`](https://github.com/Imrglop/bedrock.lua) (which targeted
@@ -65,6 +68,31 @@ If **no** engine hook resolves, bedrocklua starts a ~20 Hz fallback ticker so th
 scheduler and events still run — meaning the example pack is exercisable even
 before any offset is verified.
 
+## Bring your own Lua API (manifest imports)
+
+When the built-in surface isn't enough, a pack can import extra Lua modules from
+a **URL** or a **local file** and `require()`/`import()` them by name, via a
+`bedrocklua.imports` block in `manifest.json`:
+
+```json
+"bedrocklua": {
+  "imports": [
+    { "name": "json",  "source": "https://example.com/json.lua", "sha256": "<hex>" },
+    { "name": "mylib", "source": "scripts/lib/mylib.lua" }
+  ]
+}
+```
+
+URL modules are fetched through the game process (Android Java/TLS), cached for
+offline use, and optionally `sha256`-verified. See
+[docs/WRITING_LUA_PACKS.md](docs/WRITING_LUA_PACKS.md#importing-external-lua-modules-bring-your-own-api).
+
+## Releases
+
+The [Release workflow](.github/workflows/release.yml) builds and publishes
+`libbedrocklua.so` (+ `bedrocklua.levipack` and `.sha256` checksums) to a rolling
+prerelease on each push, and to a versioned release on `v*` tags.
+
 ## Build
 
 Requirements: Android NDK r26b, CMake ≥ 3.18, network access (deps are fetched).
@@ -104,8 +132,8 @@ See [docs/WRITING_LUA_PACKS.md](docs/WRITING_LUA_PACKS.md) for the full API
 surface. Minimal example:
 
 ```lua
-local mc = import("@minecraft/server")
-mc.world.sendMessage("hello from lua")
+local mc = import("@bedrocklua")
+mc.world.sendMessage("hello from lua (@bedrocklua v" .. mc.version .. ")")
 mc.system.runInterval(function()
     mc.world.sendMessage("tick " .. mc.system.currentTick)
 end, 20)
@@ -119,7 +147,7 @@ src/
   mod/                     lifecycle + fallback ticker, dladdr mod dir
   lua/                     LuaState (sol2), LuaScriptHost (scheduler), LuaEventBus
   pack/                    manifest parsing + behavior-pack discovery
-  binding/                 @minecraft/server + @minecraft/server-ui mirror
+  binding/                 @bedrocklua / -ui / -admin / -net modules
   hook/                    HookManager (GlossHook) + Level/Chat/PackStack + seam
   sig/                     version-keyed signatures + /proc/self/maps scanner
   nbt/                     Bedrock LittleEndian + Network (VarInt/ZigZag) NBT

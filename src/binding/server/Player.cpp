@@ -35,6 +35,34 @@ void installPlayer(lua::LuaScriptHost& host, sol::table& server) {
     player.set_function("kick", [&host](sol::table, sol::object) {
         unavailable(host, "Player.kick", "ServerNetworkHandler::disconnectClient");
     });
+    player.set_function("isOp", [&host](sol::table) {
+        unavailable(host, "Player.isOp", "Player::getCommandPermissionLevel");
+    });
+    player.set_function("playSound", [&host](sol::table, const std::string&, sol::object) {
+        unavailable(host, "Player.playSound", "Player::playSound");
+    });
+    player.set_function("getSpawnPoint", [&host](sol::table) {
+        unavailable(host, "Player.getSpawnPoint", "Player::getSpawnPosition");
+    });
+    player.set_function("setSpawnPoint", [&host](sol::table, sol::object) {
+        unavailable(host, "Player.setSpawnPoint", "Player::setRespawnPosition");
+    });
+    player.set_function("applyKnockback", [&host](sol::table, sol::object, sol::object) {
+        unavailable(host, "Player.applyKnockback", "Actor::knockback");
+    });
+    // onScreenDisplay: returns a sub-object whose methods degrade cleanly.
+    player.set_function("onScreenDisplay", [&host](sol::table) -> sol::table {
+        sol::table osd = host.state().sol().create_table();
+        osd.set_function("setActionBar", [&host](const std::string&) {
+            unavailable(host, "Player.onScreenDisplay.setActionBar",
+                        "ServerPlayer::sendNetworkPacket(SetTitle)");
+        });
+        osd.set_function("setTitle", [&host](sol::object, sol::object) {
+            unavailable(host, "Player.onScreenDisplay.setTitle",
+                        "ServerPlayer::sendNetworkPacket(SetTitle)");
+        });
+        return osd;
+    });
 
     server["Player"] = player;
 }

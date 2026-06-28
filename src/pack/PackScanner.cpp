@@ -84,6 +84,11 @@ void PackScanner::loadPack(Runtime& rt, const PackManifest& manifest, const fs::
 
     log::info("loading lua pack '{}' ({}) entry={}", manifest.name, packId, module.entry);
     auto host = std::make_unique<lua::LuaScriptHost>(rt, packId, packDir);
+    if (!manifest.imports.empty()) {
+        // Cache downloaded modules under the mod data dir, namespaced per pack.
+        auto cacheDir = rt.dataDir / "import_cache" / packId;
+        host->configureImports(manifest.imports, cacheDir);
+    }
     bool ok = host->start(module.entry);
     if (!ok) {
         log::warn("lua pack '{}' entry reported an error (host kept alive for events)", packId);

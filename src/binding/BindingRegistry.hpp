@@ -1,14 +1,16 @@
 #pragma once
 
-// BindingRegistry - assembles the @minecraft/server-style Lua API for a host.
+// BindingRegistry - assembles the @bedrocklua module family for a host
+// (bedrocklua's own namespace; the vanilla @minecraft/* names are intentionally
+// not used).
 //
 // Modules are exposed through Lua's package system so scripts can write either
 //
-//     local mc = require("@minecraft/server")
+//     local mc = require("@bedrocklua")
 //
 // or use the convenience global:
 //
-//     local mc = import("@minecraft/server")
+//     local mc = import("@bedrocklua")
 //
 // Each area (system, world, player, entity, block, item, events, ui) registers
 // its slice of the module table. Bindings that need engine offsets resolve them
@@ -29,6 +31,7 @@ void installAll(lua::LuaScriptHost& host);
 // Module installers - each fills in part of the @minecraft/server table.
 // (Declared here so BindingRegistry.cpp can call across translation units.)
 void installSystem(lua::LuaScriptHost& host, sol::table& server);
+void installConstants(lua::LuaScriptHost& host, sol::table& server);
 void installVector3(lua::LuaScriptHost& host, sol::table& server);
 void installWorld(lua::LuaScriptHost& host, sol::table& server);
 void installDimension(lua::LuaScriptHost& host, sol::table& server);
@@ -38,8 +41,12 @@ void installBlock(lua::LuaScriptHost& host, sol::table& server);
 void installItemStack(lua::LuaScriptHost& host, sol::table& server);
 void installEvents(lua::LuaScriptHost& host, sol::table& server);
 
-// @minecraft/server-ui form module.
+// @bedrocklua-ui form module.
 void installServerUi(lua::LuaScriptHost& host, sol::table& serverUi);
+
+// @bedrocklua-admin (server administration) + @bedrocklua-net (networking).
+void installAdmin(lua::LuaScriptHost& host, sol::table& admin);
+void installNet(lua::LuaScriptHost& host, sol::table& net);
 
 // Helper used by offset-dependent bindings: raises a catchable Lua error that
 // names the missing signature, used when an engine accessor is unavailable on

@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    branches: [main, claude/levi-launchroid-mod-setup-wzr2bw]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Don't cancel a release that is mid-upload; avoid clobbering the rolling tag.
+concurrency:
+  group: bedrocklua-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r26b
+
+      - name: Fetch dependencies (vendor GlossHook)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: bash scripts/fetch_deps.sh
+
+      - name: Build libbedrocklua.so
+        run: |
+          set -euo pipefail
+          cmake -B build \
+            -DCMAKE_TOOLCHAIN_FILE=${{ steps.ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-24 \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j"$(nproc)"
+          test -f build/libbedrocklua.so
+
+      - name: Package + checksums
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y zip
+          bash packaging/package.sh build/libbedrocklua.so
+          mkdir -p dist
+          cp build/libbedrocklua.so dist/libbedrocklua.so
+          ( cd dist && sha256sum libbedrocklua.so > libbedrocklua.so.sha256 )
+          ( cd dist && sha256sum bedrocklua.levipack > bedrocklua.levipack.sha256 )
+          ls -la dist
+
+      - name: Publish rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+            PRERELEASE=""
+          else
+            TAG="continuous-${GITHUB_REF_NAME//\//-}"
+            PRERELEASE="--prerelease"
+          fi
+          TITLE="bedrocklua ${TAG}"
+          NOTES="Automatic ARM64 build of libbedrocklua.so from commit ${GITHUB_SHA}."
+
+          retry() {
+            local tries=0 max=3
+            until "$@"; do
+              tries=$((tries + 1))
+              [ "$tries" -ge "$max" ] && { echo "failed after ${max}: $*" >&2; return 1; }
+              echo "retry $((tries + 1))/${max}..." >&2; sleep $((tries * 5))
+            done
+          }
+
+          ASSETS=(
+            dist/libbedrocklua.so
+            dist/libbedrocklua.so.sha256
+            dist/bedrocklua.levipack
+            dist/bedrocklua.levipack.sha256
+          )
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+              # Move the rolling tag to the current commit via the refs API.
+              retry gh api --method PATCH \
+                -H "Accept: application/vnd.github+json" \
+                "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}" \
+                -f sha="${GITHUB_SHA}" -F force=true --silent || true
+            fi
+            retry gh release upload "$TAG" "${ASSETS[@]}" --clobber
+            retry gh release edit "$TAG" --title "$TITLE" --notes "$NOTES" $PRERELEASE
+          else
+            retry gh release create "$TAG" "${ASSETS[@]}" \
+              --target "${GITHUB_SHA}" --title "$TITLE" --notes "$NOTES" $PRERELEASE
+          fi
