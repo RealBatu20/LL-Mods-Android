@@ -26,7 +26,7 @@ flipping items below to **[VERIFIED]** is the on-device step described in
 - [x] Lua 5.4 VM creation, sandbox, error handling (no script error can abort the process).
 - [x] Behavior-pack `manifest.json` parsing and `language: "lua"` detection.
 - [x] Behavior-pack discovery + per-pack `LuaScriptHost`.
-- [x] `require`/`import` of `@minecraft/server` and `@minecraft/server-ui`.
+- [x] `require`/`import` of `@bedrocklua`, `@bedrocklua-ui`, `@bedrocklua-admin`, `@bedrocklua-net`.
 - [x] Scheduler: `system.run/runTimeout/runInterval/clearRun`, `system.currentTick`.
 - [x] Event subscribe/unsubscribe + dispatch (`world.afterEvents`/`beforeEvents`, cancellation).
 - [x] `Vector`/`Vector3` math, `ItemStack` value type, UI form *builders*.

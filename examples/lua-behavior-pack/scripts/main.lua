@@ -5,14 +5,31 @@
 --   "type": "script", "language": "lua", "entry": "scripts/main.lua"
 -- and bedrocklua runs it in an embedded Lua 5.4 VM.
 
-local mc = import("@minecraft/server")
-local ui = import("@minecraft/server-ui")
+-- bedrocklua uses its own module namespace (NOT the vanilla @minecraft/* names).
+local mc    = import("@bedrocklua")        -- core API (like @minecraft/server)
+local ui    = import("@bedrocklua-ui")     -- forms (like @minecraft/server-ui)
+local admin = import("@bedrocklua-admin")  -- server administration
+local net   = import("@bedrocklua-net")    -- networking
 
 local world = mc.world
 local system = mc.system
 
--- 1. Log + (degraded) broadcast a message at startup.
-world.sendMessage("bedrocklua example loaded!")
+-- 0. Module versions.
+world.sendMessage(string.format("bedrocklua example loaded! (@bedrocklua v%s, -ui v%s, -net v%s)",
+    mc.version, ui.version, net.version))
+
+-- 1. admin.broadcast (offset-free, logs to logcat).
+admin.broadcast("hello from @bedrocklua-admin")
+
+-- 1a. net.sha256 works offline; an async fetch is non-blocking.
+world.sendMessage("sha256('bedrocklua') = " .. net.sha256("bedrocklua"))
+net.fetchAsync("https://raw.githubusercontent.com/rxi/json.lua/master/json.lua", function(res)
+    if res.ok then
+        world.sendMessage("net.fetchAsync got " .. tostring(#res.body) .. " bytes")
+    else
+        world.sendMessage("net.fetchAsync failed (offline?): " .. tostring(res.error))
+    end
+end)
 
 -- 1b. Use a module imported by name via the manifest's bedrocklua.imports
 -- (local file source -> always works). The optional URL import "remote_demo"

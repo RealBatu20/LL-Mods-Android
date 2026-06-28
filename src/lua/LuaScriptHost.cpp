@@ -14,6 +14,8 @@ LuaScriptHost::LuaScriptHost(Runtime& rt, std::string packId, std::filesystem::p
     : rt_(rt), packId_(std::move(packId)), packDir_(std::move(packDir)) {}
 
 LuaScriptHost::~LuaScriptHost() {
+    // Stop workers from posting into a dying host (they just drop their result).
+    mailbox_->alive.store(false);
     rt_.events.unregisterHost(this);
 }
 
@@ -56,6 +58,18 @@ bool LuaScriptHost::start(const std::filesystem::path& entryRelative) {
 
 void LuaScriptHost::tick(std::uint64_t currentTick) {
     currentTick_ = currentTick;
+
+    // Run any results handed back by worker threads (async net fetches, ...) on
+    // the game thread before the scheduler.
+    {
+        std::vector<std::function<void()>> due;
+        {
+            std::lock_guard<std::mutex> lk(mailbox_->mutex);
+            due.swap(mailbox_->queue);
+        }
+        for (auto& fn : due) fn();
+    }
+
     if (tasks_.empty()) return;
 
     // Snapshot the count: callbacks may schedule new tasks (appended at the end

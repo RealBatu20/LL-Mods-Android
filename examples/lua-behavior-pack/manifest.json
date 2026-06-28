@@ -17,14 +17,10 @@
     }
   ],
   "dependencies": [
-    {
-      "module_name": "@minecraft/server",
-      "version": "1.0.0"
-    },
-    {
-      "module_name": "@minecraft/server-ui",
-      "version": "1.0.0"
-    }
+    { "module_name": "@bedrocklua", "version": "0.1.0" },
+    { "module_name": "@bedrocklua-ui", "version": "0.1.0" },
+    { "module_name": "@bedrocklua-admin", "version": "0.1.0" },
+    { "module_name": "@bedrocklua-net", "version": "0.1.0" }
   ],
   "bedrocklua": {
     "imports": [

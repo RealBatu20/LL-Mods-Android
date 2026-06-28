@@ -2,7 +2,18 @@
 
 A bedrocklua pack is an ordinary Minecraft behavior pack whose `manifest.json`
 declares a script module with `"language": "lua"`. The entry file runs in a
-Lua 5.4 sandbox with a `@minecraft/server`-style API.
+Lua 5.4 sandbox with the **`@bedrocklua`** module family — bedrocklua's own
+namespace, modelled on the vanilla `@minecraft/*` packages but never using those
+names:
+
+| bedrocklua module | version | role (vanilla analogue) |
+| --- | --- | --- |
+| `@bedrocklua` | 0.1.0 | core engine API (`@minecraft/server`) |
+| `@bedrocklua-ui` | 0.1.0 | forms (`@minecraft/server-ui`) |
+| `@bedrocklua-admin` | 0.1.0 | server administration |
+| `@bedrocklua-net` | 0.1.0 | networking (HTTP fetch, hashing) |
+
+Each module table exposes its `.version` (e.g. `mc.version == "0.1.0"`).
 
 ## manifest.json
 
@@ -25,8 +36,8 @@ Lua 5.4 sandbox with a `@minecraft/server`-style API.
     }
   ],
   "dependencies": [
-    { "module_name": "@minecraft/server", "version": "1.0.0" },
-    { "module_name": "@minecraft/server-ui", "version": "1.0.0" }
+    { "module_name": "@bedrocklua", "version": "0.1.0" },
+    { "module_name": "@bedrocklua-ui", "version": "0.1.0" }
   ]
 }
 ```
@@ -35,7 +46,7 @@ Only the `language` value differs from a vanilla JavaScript pack.
 
 ## Importing external Lua modules (bring your own API)
 
-When the built-in `@minecraft/server` surface isn't enough, a pack can import
+When the built-in `@bedrocklua` surface isn't enough, a pack can import
 extra Lua modules — from a URL or a local file — and `require()`/`import()` them
 by name. Declare them in a `bedrocklua.imports` block:
 
@@ -76,8 +87,10 @@ local json  = require("json")
 ## Importing the API
 
 ```lua
-local mc = import("@minecraft/server")        -- or require("@minecraft/server")
-local ui = import("@minecraft/server-ui")
+local mc    = import("@bedrocklua")        -- or require("@bedrocklua")
+local ui    = import("@bedrocklua-ui")
+local admin = import("@bedrocklua-admin")
+local net   = import("@bedrocklua-net")
 ```
 
 `require()` also works because the modules are registered in `package.preload`.
@@ -116,7 +129,7 @@ The VM opens `base`, `string`, `table`, `math`, `coroutine`, `utf8`, `os`
 
 ### Constants
 
-`@minecraft/server` ships offset-free constant tables: `GameMode`,
+`@bedrocklua` ships offset-free constant tables: `GameMode`,
 `MinecraftDimensionTypes`, `EntityComponentTypes`, `ItemComponentTypes`,
 `BlockComponentTypes`, `EquipmentSlot`, `EntityDamageCause`, `DisplaySlotId`,
 plus `TicksPerSecond` (20) and `TicksPerDay` (24000).
@@ -146,7 +159,25 @@ item:setLore({ "line 1", "line 2" })
 local copy = item:clone()
 ```
 
-## `@minecraft/server-ui` — builders work, `show()` degrades
+## `@bedrocklua-admin` — server administration
+
+`admin.broadcast(msg)` / `admin.log(msg)` work (logged). `listPlayers()` returns
+an empty list until verified. `runConsoleCommand`, `kick`, `op`/`deop`,
+`setGameRule`/`getGameRule`, `stopServer` are offset-dependent and degrade to
+catchable errors.
+
+## `@bedrocklua-net` — networking
+
+| API | Description |
+| --- | --- |
+| `net.sha256(s)` | Lowercase hex SHA-256. Always works. |
+| `net.fetch(url)` | `{ ok, status, body, error }`. **Synchronous — blocks the caller**; prefer `fetchAsync`. |
+| `net.get(url)` | Returns `body` or `nil, error`. Synchronous. |
+| `net.fetchAsync(url, cb)` | Runs off-thread; calls `cb({ ok, status, body, error })` on the game thread. Non-blocking. |
+
+HTTP(S) goes through the game process's network stack (Android Java/TLS).
+
+## `@bedrocklua-ui` — builders work, `show()` degrades
 
 ```lua
 local form = ui.ActionFormData():title("T"):body("B"):button("OK")

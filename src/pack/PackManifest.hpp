@@ -14,12 +14,12 @@
 //       { "type": "script", "language": "lua", "uuid": "...",
 //         "version": [1,0,0], "entry": "scripts/main.lua" }
 //     ],
-//     "dependencies": [ { "module_name": "@minecraft/server", "version": "1.x" } ]
+//     "dependencies": [ { "module_name": "@bedrocklua", "version": "0.1.0" } ]
 //   }
 //
 // bedrocklua extension: a pack may import external Lua API modules (from a URL,
 // or a local/relative path) that become require()/import()-able by name. This is
-// the escape hatch for when the built-in @minecraft/server surface is
+// the escape hatch for when the built-in @bedrocklua surface is
 // insufficient - bring your own Lua API from anywhere:
 //
 //   "bedrocklua": {

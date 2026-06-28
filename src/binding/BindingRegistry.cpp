@@ -17,10 +17,14 @@ void unavailable(lua::LuaScriptHost& /*host*/, const char* api, const char* sign
                     api, signatureName));
 }
 
+// bedrocklua's module API version. Each module table carries this as `.version`,
+// mirroring how the vanilla @minecraft/* packages are versioned.
+static constexpr const char* kModuleVersion = "0.1.0";
+
 void installAll(lua::LuaScriptHost& host) {
     sol::state& lua = host.state().sol();
 
-    // @minecraft/server
+    // @bedrocklua - the core engine API (the equivalent of @minecraft/server).
     sol::table server = lua.create_table();
     installSystem(host, server);
     installConstants(host, server);
@@ -32,19 +36,31 @@ void installAll(lua::LuaScriptHost& host) {
     installBlock(host, server);
     installItemStack(host, server);
     installEvents(host, server);
+    server["version"] = kModuleVersion;
 
-    // @minecraft/server-ui
-    sol::table serverUi = lua.create_table();
-    installServerUi(host, serverUi);
+    // @bedrocklua-ui - forms (the equivalent of @minecraft/server-ui).
+    sol::table ui = lua.create_table();
+    installServerUi(host, ui);
+    ui["version"] = kModuleVersion;
 
-    // Expose the modules through Lua's require() via package.preload, plus an
-    // import() convenience that mirrors the JS Script API ergonomics.
+    // @bedrocklua-admin - server administration.
+    sol::table admin = lua.create_table();
+    installAdmin(host, admin);
+    admin["version"] = kModuleVersion;
+
+    // @bedrocklua-net - networking (HTTP fetch, hashing).
+    sol::table net = lua.create_table();
+    installNet(host, net);
+    net["version"] = kModuleVersion;
+
+    // Expose the modules through Lua's require()/import() via package.preload.
+    // bedrocklua uses its own namespace - NOT the vanilla @minecraft/* names.
     sol::table package = lua["package"];
     sol::table preload = package["preload"];
-    preload["@minecraft/server"] = [server](sol::this_state) -> sol::table { return server; };
-    preload["@minecraft/server-ui"] = [serverUi](sol::this_state) -> sol::table {
-        return serverUi;
-    };
+    preload["@bedrocklua"] = [server](sol::this_state) -> sol::table { return server; };
+    preload["@bedrocklua-ui"] = [ui](sol::this_state) -> sol::table { return ui; };
+    preload["@bedrocklua-admin"] = [admin](sol::this_state) -> sol::table { return admin; };
+    preload["@bedrocklua-net"] = [net](sol::this_state) -> sol::table { return net; };
 
     lua.set_function("import", [&lua](const std::string& name) -> sol::object {
         sol::protected_function require = lua["require"];
@@ -56,7 +72,8 @@ void installAll(lua::LuaScriptHost& host) {
         return r;
     });
 
-    log::debug("[{}] @minecraft/server + @minecraft/server-ui registered", host.packId());
+    log::debug("[{}] registered @bedrocklua, -ui, -admin, -net v{}", host.packId(),
+               kModuleVersion);
 }
 
 }  // namespace bedrocklua::binding

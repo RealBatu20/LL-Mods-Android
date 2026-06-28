@@ -23,8 +23,11 @@ instead of `"language": "javascript"`:
 ```
 
 bedrocklua discovers such packs, runs their entry script in an embedded
-**Lua 5.4** VM (via [sol2](https://github.com/ThePhd/sol2)), and exposes a broad
-`@minecraft/server`-style API to the script.
+**Lua 5.4** VM (via [sol2](https://github.com/ThePhd/sol2)), and exposes its own
+**`@bedrocklua`** module family — modelled on the vanilla `@minecraft/*` packages
+but in bedrocklua's own namespace: `@bedrocklua` (core), `@bedrocklua-ui`
+(forms), `@bedrocklua-admin` (administration), `@bedrocklua-net` (networking),
+each versioned `0.1.0`.
 
 This is a ground-up re-implementation of the concept behind the archived
 [`Imrglop/bedrock.lua`](https://github.com/Imrglop/bedrock.lua) (which targeted
@@ -129,8 +132,8 @@ See [docs/WRITING_LUA_PACKS.md](docs/WRITING_LUA_PACKS.md) for the full API
 surface. Minimal example:
 
 ```lua
-local mc = import("@minecraft/server")
-mc.world.sendMessage("hello from lua")
+local mc = import("@bedrocklua")
+mc.world.sendMessage("hello from lua (@bedrocklua v" .. mc.version .. ")")
 mc.system.runInterval(function()
     mc.world.sendMessage("tick " .. mc.system.currentTick)
 end, 20)
@@ -144,7 +147,7 @@ src/
   mod/                     lifecycle + fallback ticker, dladdr mod dir
   lua/                     LuaState (sol2), LuaScriptHost (scheduler), LuaEventBus
   pack/                    manifest parsing + behavior-pack discovery
-  binding/                 @minecraft/server + @minecraft/server-ui mirror
+  binding/                 @bedrocklua / -ui / -admin / -net modules
   hook/                    HookManager (GlossHook) + Level/Chat/PackStack + seam
   sig/                     version-keyed signatures + /proc/self/maps scanner
   nbt/                     Bedrock LittleEndian + Network (VarInt/ZigZag) NBT
